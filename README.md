@@ -1,5 +1,14 @@
 # Inflation Forecasting with ARIMA and LSTM
 
+
+![Repo size](https://img.shields.io/github/repo-size/pablo-reyes8/inflation-forecasting-arima-lstm)
+![Last commit](https://img.shields.io/github/last-commit/pablo-reyes8/inflation-forecasting-arima-lstm)
+![Open issues](https://img.shields.io/github/issues/pablo-reyes8/inflation-forecasting-arima-lstm)
+![Contributors](https://img.shields.io/github/contributors/pablo-reyes8/inflation-forecasting-arima-lstm)
+![Forks](https://img.shields.io/github/forks/pablo-reyes8/inflation-forecasting-arima-lstm?style=social)
+![Stars](https://img.shields.io/github/stars/pablo-reyes8/inflation-forecasting-arima-lstm?style=social)
+
+
 A full-stack inflation-forecasting toolkit that pairs classical ARIMA diagnostics in Stata with an LSTM pipeline in Python. The project walks from raw CPI data ingestion and exploratory visualisation through model selection, hyper-parameter tuning, residual stress-testing, and one-year dynamic forecasts—culminating in a side-by-side benchmark of statistical and deep-learning approaches, complete with R², MSE, MAE, and plots for powerful insights.
 
 ---
