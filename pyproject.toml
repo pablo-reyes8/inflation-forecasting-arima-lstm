@@ -17,7 +17,7 @@ dependencies = [
 
 [project.optional-dependencies]
 ml = ["scikit-learn", "xgboost"]
-forecasting = ["statsmodels", "prophet"]
+forecasting = ["statsmodels", "prophet", "arch"]
 dl = ["tensorflow", "keras-tuner"]
 viz = ["matplotlib", "seaborn"]
 dev = ["pytest"]

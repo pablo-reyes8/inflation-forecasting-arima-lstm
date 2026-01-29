@@ -19,6 +19,8 @@ A full-stack inflation-forecasting toolkit that pairs classical ARIMA diagnostic
 |-----------------|---------|
 | **`Scripts/`** | Original notebooks and Stata script (kept for reference). |
 | **`src/inflation_forecasting/`** | Python package with reusable data, modeling, and evaluation modules. |
+| **`src/inflation_forecasting/models/econometria/`** | Modelos econometricos (ARIMA/ARMA/SARIMA/ARIMAX/ARCH/GARCH). |
+| **`src/inflation_forecasting/models/ml/`** | Modelos ML y deep learning (baselines, LSTM, GRU). |
 | **`Data/`** | Raw and processed datasets (CSV/XLSX). |
 | **`tests/`** | Pytest unit tests for core utilities. |
 | **`outputs/`** | Auto-generated metrics and prediction artifacts from CLI runs. |
@@ -83,6 +85,13 @@ inflation-forecast decompose --state Maryland --period 4
 inflation-forecast arima --order 1,0,3
 inflation-forecast arima --grid --p-min 0 --p-max 3 --d-min 0 --d-max 1 --q-min 0 --q-max 3
 
+# Econometria adicional
+inflation-forecast arma --order 1,1
+inflation-forecast sarima --order 1,0,1 --auto-seasonal
+inflation-forecast arimax --order 1,0,1 --exog-cols pi_nt,pi_t
+inflation-forecast arch --p 1
+inflation-forecast garch --p 1 --q 1
+
 # LSTM / GRU
 inflation-forecast lstm-train --look-back 4 --epochs 80 --forecast-steps 4 --save-model
 inflation-forecast lstm-tune --look-back 4 --max-trials 10
@@ -99,6 +108,7 @@ inflation-forecast ml-train --model xgboost --lags 4
 
 **Optional dependencies by model**
 - ARIMA/HP filter/decomposition: `statsmodels`
+- ARCH/GARCH: `arch`
 - LSTM/GRU + tuning: `tensorflow`, `keras-tuner`
 - Prophet: `prophet`
 - XGBoost: `xgboost`

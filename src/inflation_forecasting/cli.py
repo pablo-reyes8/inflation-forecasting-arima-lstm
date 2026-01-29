@@ -7,7 +7,6 @@ from pathlib import Path
 from . import __version__
 from .decomposition import hp_filter, seasonal_decompose_series
 from .io import default_outputs_dir, load_raw_data, save_dataframe, save_json
-from .metrics import regression_report
 from .preprocess import add_quarterly_date, filter_state, prepare_state_series, summary_stats
 from .models.econometria.arima import evaluate_arima, grid_search_arima
 from .models.econometria.arma import evaluate_arma, grid_search_arma
@@ -25,7 +24,35 @@ def _timestamp() -> str:
 
 
 def _parse_order(text: str, expected: int) -> tuple[int, ...]:
-    parts = [p.strip() for p in text.split(",") if p.strip()]\n+    if len(parts) != expected:\n+        raise ValueError(f\"Expected {expected} values, got {len(parts)} in '{text}'.\")\n+    return tuple(int(p) for p in parts)\n+\n+\n+def _parse_cols(text: str | None) -> list[str]:\n+    if not text:\n+        return []\n+    return [c.strip() for c in text.split(\",\") if c.strip()]\n+\n+\n+def _load_state_frame(args, exog_cols: list[str] | None = None):\n+    df = load_raw_data(args.data_path)\n+    df = add_quarterly_date(df, year_col=args.year_col, quarter_col=args.quarter_col, date_col=args.date_col)\n+    df_state = filter_state(df, state=args.state)\n+    df_state = df_state.set_index(args.date_col).sort_index()\n+    if not args.no_interpolate:\n+        cols = [args.target] + (exog_cols or [])\n+        for col in cols:\n+            if col in df_state.columns:\n+                df_state[col] = df_state[col].interpolate()\n+    return df_state\n+
+    parts = [p.strip() for p in text.split(",") if p.strip()]
+    if len(parts) != expected:
+        raise ValueError(f"Expected {expected} values, got {len(parts)} in '{text}'.")
+    return tuple(int(p) for p in parts)
+
+
+def _parse_cols(text: str | None) -> list[str]:
+    if not text:
+        return []
+    return [c.strip() for c in text.split(",") if c.strip()]
+
+
+def _load_state_frame(args, exog_cols: list[str] | None = None):
+    df = load_raw_data(args.data_path)
+    df = add_quarterly_date(
+        df,
+        year_col=args.year_col,
+        quarter_col=args.quarter_col,
+        date_col=args.date_col,
+    )
+    df_state = filter_state(df, state=args.state)
+    df_state = df_state.set_index(args.date_col).sort_index()
+    if not args.no_interpolate:
+        cols = [args.target] + (exog_cols or [])
+        for col in cols:
+            if col in df_state.columns:
+                df_state[col] = df_state[col].interpolate()
+    return df_state
+
 
 def _load_series(args):
     df = load_raw_data(args.data_path)
@@ -107,6 +134,106 @@ def cmd_arima(args):
             future = forecast_arima(model_fit, steps=args.forecast_steps)
             future_path = save_dataframe(future.to_frame("forecast"), out_dir / f"arima_forecast_{_timestamp()}.csv")
             print(f"Saved forecast to {future_path}")
+
+
+def cmd_arma(args):
+    series = _load_series(args)
+    out_dir = Path(args.output_dir) if args.output_dir else default_outputs_dir()
+    if args.grid:
+        results = grid_search_arma(
+            series,
+            p_range=range(args.p_min, args.p_max + 1),
+            q_range=range(args.q_min, args.q_max + 1),
+            test_size=args.test_size,
+            max_models=args.max_models,
+        )
+        if not results:
+            print("No ARMA models fit successfully.")
+            return
+        best = results[0]
+        metrics_path = save_json(best.metrics, out_dir / f"arma_best_metrics_{_timestamp()}.json")
+        preds_path = save_dataframe(best.predictions.to_frame("prediction"), out_dir / f"arma_best_preds_{_timestamp()}.csv")
+        print(f"Best order: {best.order}")
+        print(best.metrics)
+        print(f"Saved metrics to {metrics_path}")
+        print(f"Saved predictions to {preds_path}")
+    else:
+        order = _parse_order(args.order, 2)
+        res = evaluate_arma(series, order=order, test_size=args.test_size)
+        metrics_path = save_json(res.metrics, out_dir / f"arma_metrics_{_timestamp()}.json")
+        preds_path = save_dataframe(res.predictions.to_frame("prediction"), out_dir / f"arma_preds_{_timestamp()}.csv")
+        print(res.metrics)
+        print(f"Saved metrics to {metrics_path}")
+        print(f"Saved predictions to {preds_path}")
+
+
+def cmd_sarima(args):
+    series = _load_series(args)
+    out_dir = Path(args.output_dir) if args.output_dir else default_outputs_dir()
+    order = _parse_order(args.order, 3)
+
+    if args.seasonal_order:
+        seasonal_order = _parse_order(args.seasonal_order, 4)
+    else:
+        seasonal_period = args.seasonal_period
+        if args.auto_seasonal and not seasonal_period:
+            seasonal_period = infer_seasonal_period(series)
+            if seasonal_period is None:
+                print("Could not infer seasonal period; defaulting to no seasonality.")
+        if not seasonal_period:
+            seasonal_order = (0, 0, 0, 0)
+        else:
+            seasonal_order = (args.seasonal_p, args.seasonal_d, args.seasonal_q, seasonal_period)
+
+    res = evaluate_sarima(series, order=order, seasonal_order=seasonal_order, test_size=args.test_size)
+    metrics_path = save_json(res.metrics, out_dir / f"sarima_metrics_{_timestamp()}.json")
+    preds_path = save_dataframe(res.predictions.to_frame("prediction"), out_dir / f"sarima_preds_{_timestamp()}.csv")
+    print(res.metrics)
+    print(f"Saved metrics to {metrics_path}")
+    print(f"Saved predictions to {preds_path}")
+
+
+def cmd_arimax(args):
+    exog_cols = _parse_cols(args.exog_cols)
+    if not exog_cols:
+        raise ValueError("ARIMAX requires --exog-cols with comma-separated column names.")
+    df_state = _load_state_frame(args, exog_cols=exog_cols)
+    missing = [col for col in exog_cols if col not in df_state.columns]
+    if missing:
+        raise ValueError(f"Exogenous columns not found in data: {missing}")
+    series = df_state[args.target]
+    exog = df_state[exog_cols]
+
+    order = _parse_order(args.order, 3)
+    res = evaluate_arimax(series, exog, order=order, test_size=args.test_size)
+    out_dir = Path(args.output_dir) if args.output_dir else default_outputs_dir()
+    metrics_path = save_json(res.metrics, out_dir / f"arimax_metrics_{_timestamp()}.json")
+    preds_path = save_dataframe(res.predictions.to_frame("prediction"), out_dir / f"arimax_preds_{_timestamp()}.csv")
+    print(res.metrics)
+    print(f"Saved metrics to {metrics_path}")
+    print(f"Saved predictions to {preds_path}")
+
+
+def cmd_arch(args):
+    series = _load_series(args)
+    res = fit_arch(series, p=args.p, mean=args.mean)
+    out_dir = Path(args.output_dir) if args.output_dir else default_outputs_dir()
+    metrics_path = save_json({"aic": res.aic, "bic": res.bic}, out_dir / f"arch_metrics_{_timestamp()}.json")
+    vol_path = save_dataframe(res.conditional_volatility.to_frame("cond_vol"), out_dir / f"arch_vol_{_timestamp()}.csv")
+    print({"aic": res.aic, "bic": res.bic})
+    print(f"Saved metrics to {metrics_path}")
+    print(f"Saved conditional volatility to {vol_path}")
+
+
+def cmd_garch(args):
+    series = _load_series(args)
+    res = fit_garch(series, p=args.p, q=args.q, mean=args.mean)
+    out_dir = Path(args.output_dir) if args.output_dir else default_outputs_dir()
+    metrics_path = save_json({"aic": res.aic, "bic": res.bic}, out_dir / f"garch_metrics_{_timestamp()}.json")
+    vol_path = save_dataframe(res.conditional_volatility.to_frame("cond_vol"), out_dir / f"garch_vol_{_timestamp()}.csv")
+    print({"aic": res.aic, "bic": res.bic})
+    print(f"Saved metrics to {metrics_path}")
+    print(f"Saved conditional volatility to {vol_path}")
 
 
 def cmd_lstm(args):
@@ -272,6 +399,45 @@ def build_parser() -> argparse.ArgumentParser:
     arima.add_argument("--q-max", type=int, default=3)
     arima.add_argument("--max-models", type=int, default=None)
     arima.set_defaults(func=cmd_arima)
+
+    arma = subparsers.add_parser("arma", parents=[common], help="ARMA training")
+    arma.add_argument("--order", default="1,1")
+    arma.add_argument("--test-size", type=float, default=0.2)
+    arma.add_argument("--grid", action="store_true")
+    arma.add_argument("--p-min", type=int, default=0)
+    arma.add_argument("--p-max", type=int, default=3)
+    arma.add_argument("--q-min", type=int, default=0)
+    arma.add_argument("--q-max", type=int, default=3)
+    arma.add_argument("--max-models", type=int, default=None)
+    arma.set_defaults(func=cmd_arma)
+
+    sarima = subparsers.add_parser("sarima", parents=[common], help="SARIMA training")
+    sarima.add_argument("--order", default="1,0,1")
+    sarima.add_argument("--test-size", type=float, default=0.2)
+    sarima.add_argument("--seasonal-order", default=None)
+    sarima.add_argument("--seasonal-p", type=int, default=1)
+    sarima.add_argument("--seasonal-d", type=int, default=0)
+    sarima.add_argument("--seasonal-q", type=int, default=1)
+    sarima.add_argument("--seasonal-period", type=int, default=0)
+    sarima.add_argument("--auto-seasonal", action="store_true")
+    sarima.set_defaults(func=cmd_sarima)
+
+    arimax = subparsers.add_parser("arimax", parents=[common], help="ARIMAX training")
+    arimax.add_argument("--order", default="1,0,1")
+    arimax.add_argument("--test-size", type=float, default=0.2)
+    arimax.add_argument("--exog-cols", default=None)
+    arimax.set_defaults(func=cmd_arimax)
+
+    arch = subparsers.add_parser("arch", parents=[common], help="ARCH volatility model")
+    arch.add_argument("--p", type=int, default=1)
+    arch.add_argument("--mean", default="constant")
+    arch.set_defaults(func=cmd_arch)
+
+    garch = subparsers.add_parser("garch", parents=[common], help="GARCH volatility model")
+    garch.add_argument("--p", type=int, default=1)
+    garch.add_argument("--q", type=int, default=1)
+    garch.add_argument("--mean", default="constant")
+    garch.set_defaults(func=cmd_garch)
 
     lstm = subparsers.add_parser("lstm-train", parents=[common], help="Train LSTM")
     lstm.add_argument("--look-back", type=int, default=4)
