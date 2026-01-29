@@ -15,12 +15,15 @@ A full-stack inflation-forecasting toolkit that pairs classical ARIMA diagnostic
 
 ## Repository Contents
 
-| File / Notebook | Purpose |
+| File / Folder | Purpose |
 |-----------------|---------|
-| **`Dataset_Construction_and_Graphs.ipynb`** | Loads the raw CPI data, builds a tidy time-series DataFrame, and produces exploratory plots (rolling mean/variance, additive decomposition, box-plots by period). |
-| **`ARIMA_Modeling_and_Forecasting.do`** | End-to-end ARIMA script in Stata: stationarity tests, ACF/PACF diagnostics, model selection via AIC/BIC, residual checks, dynamic forecasts. |
-| **`LSTM_Model.ipynb`** | Prepares supervised windows, tunes a multi-layer LSTM with Keras, trains the configuration, and evaluates out-of-sample accuracy (R², MSE, MAE). |
-| **`Model_Selection.ipynb`** | Brings ARIMA and LSTM forecasts together, visualises residuals and forecast paths, computes final metrics, and selects the most robust model for deployment. |
+| **`Scripts/`** | Original notebooks and Stata script (kept for reference). |
+| **`src/inflation_forecasting/`** | Python package with reusable data, modeling, and evaluation modules. |
+| **`Data/`** | Raw and processed datasets (CSV/XLSX). |
+| **`tests/`** | Pytest unit tests for core utilities. |
+| **`outputs/`** | Auto-generated metrics and prediction artifacts from CLI runs. |
+| **`Dockerfile`** | Containerized environment for reproducible runs. |
+| **`requirements.txt`** | Python dependencies. |
 
 ---
 ## Key Highlights
@@ -56,8 +59,56 @@ A full-stack inflation-forecasting toolkit that pairs classical ARIMA diagnostic
 
 ## How to Run
 
-Execute the notebooks in the order listed above (1 → 4) to reproduce every
-figure, metric and forecast.
+You can still run the notebooks in `Scripts/`, but the project now ships with a
+CLI so you can train and evaluate models from the terminal.
+
+### Install
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+pip install -e .
+```
+
+### CLI examples
+
+```bash
+# Descriptive stats and decomposition
+inflation-forecast describe --state Maryland
+inflation-forecast hp-filter --state Maryland --lamb 1600
+inflation-forecast decompose --state Maryland --period 4
+
+# ARIMA (fixed order or grid search)
+inflation-forecast arima --order 1,0,3
+inflation-forecast arima --grid --p-min 0 --p-max 3 --d-min 0 --d-max 1 --q-min 0 --q-max 3
+
+# LSTM / GRU
+inflation-forecast lstm-train --look-back 4 --epochs 80 --forecast-steps 4 --save-model
+inflation-forecast lstm-tune --look-back 4 --max-trials 10
+inflation-forecast gru-train --look-back 4 --epochs 80
+
+# LSTM inference from saved artifacts
+inflation-forecast lstm-forecast --model-path outputs/lstm_model_*.keras --scaler-path outputs/lstm_scaler_*.joblib --steps 4
+
+# Prophet and ML baselines
+inflation-forecast prophet
+inflation-forecast ml-train --model random_forest --lags 4
+inflation-forecast ml-train --model xgboost --lags 4
+```
+
+**Optional dependencies by model**
+- ARIMA/HP filter/decomposition: `statsmodels`
+- LSTM/GRU + tuning: `tensorflow`, `keras-tuner`
+- Prophet: `prophet`
+- XGBoost: `xgboost`
+
+### Docker
+
+```bash
+docker build -t inflation-forecast .
+docker run --rm -v \"$PWD:/app\" inflation-forecast describe --state Maryland
+```
 
 ---
 

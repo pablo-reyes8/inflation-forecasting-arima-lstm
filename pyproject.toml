@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "inflation-forecasting"
+version = "0.1.0"
+description = "Inflation forecasting toolkit with ARIMA, LSTM/GRU, Prophet, and ML baselines."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+
+dependencies = [
+  "numpy",
+  "pandas",
+]
+
+[project.optional-dependencies]
+ml = ["scikit-learn", "xgboost"]
+forecasting = ["statsmodels", "prophet"]
+dl = ["tensorflow", "keras-tuner"]
+viz = ["matplotlib", "seaborn"]
+dev = ["pytest"]
+
+[project.scripts]
+inflation-forecast = "inflation_forecasting.cli:main"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]

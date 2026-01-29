@@ -202,10 +202,33 @@ def forecast_future(model: object, scaler: object, series: pd.Series, look_back:
     for _ in range(steps):
         pred = model.predict(window, verbose=0)[0][0]
         preds.append(pred)
-        new_window = np.append(window[:, 1:, :], [[[pred]]], axis=1)
-        window = new_window
+        window = np.concatenate([window[:, 1:, :], np.array([[[pred]]])], axis=1)
 
     preds = np.array(preds).reshape(-1, 1)
     preds_inv = scaler.inverse_transform(preds).flatten()
     future_index = pd.date_range(series.index[-1], periods=steps + 1, freq="Q")[1:]
     return pd.Series(preds_inv, index=future_index, name="forecast")
+
+
+def save_lstm_artifacts(model: object, scaler: object, model_path: str, scaler_path: str) -> None:
+    _require_tensorflow()
+    try:
+        import joblib
+    except ImportError as exc:
+        raise ImportError("joblib is required to save scalers. Install with `pip install joblib`.") from exc
+
+    model.save(model_path)
+    joblib.dump(scaler, scaler_path)
+
+
+def load_lstm_artifacts(model_path: str, scaler_path: str) -> tuple[object, object]:
+    _require_tensorflow()
+    try:
+        import joblib
+    except ImportError as exc:
+        raise ImportError("joblib is required to load scalers. Install with `pip install joblib`.") from exc
+    import tensorflow as tf
+
+    model = tf.keras.models.load_model(model_path)
+    scaler = joblib.load(scaler_path)
+    return model, scaler
