@@ -5,8 +5,8 @@ from typing import Literal
 
 import pandas as pd
 
-from ..features import make_lag_features
-from ..metrics import regression_report
+from ...features import make_lag_features
+from ...metrics import regression_report
 
 
 ModelName = Literal["random_forest", "gradient_boosting", "xgboost", "linear_regression"]

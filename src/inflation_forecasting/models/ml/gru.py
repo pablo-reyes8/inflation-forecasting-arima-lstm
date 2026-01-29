@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 
-from ..metrics import regression_report
+from ...metrics import regression_report
 from .lstm import create_supervised, _require_tensorflow
 
 

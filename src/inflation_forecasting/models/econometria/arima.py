@@ -6,7 +6,7 @@ from typing import Iterable, Optional
 
 import pandas as pd
 
-from ..metrics import regression_report
+from ...metrics import regression_report
 
 
 @dataclass

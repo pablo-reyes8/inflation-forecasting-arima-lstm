@@ -8,17 +8,24 @@ from . import __version__
 from .decomposition import hp_filter, seasonal_decompose_series
 from .io import default_outputs_dir, load_raw_data, save_dataframe, save_json
 from .metrics import regression_report
-from .preprocess import prepare_state_series, summary_stats
-from .models.arima import evaluate_arima, grid_search_arima
-from .models.lstm import train_lstm, tune_lstm, forecast_future, save_lstm_artifacts, load_lstm_artifacts
-from .models.gru import train_gru
-from .models.prophet import train_prophet
-from .models.ml import train_ml_model
+from .preprocess import add_quarterly_date, filter_state, prepare_state_series, summary_stats
+from .models.econometria.arima import evaluate_arima, grid_search_arima
+from .models.econometria.arma import evaluate_arma, grid_search_arma
+from .models.econometria.sarima import evaluate_sarima, infer_seasonal_period
+from .models.econometria.arimax import evaluate_arimax
+from .models.econometria.arch_garch import fit_arch, fit_garch
+from .models.ml.lstm import train_lstm, tune_lstm, forecast_future, save_lstm_artifacts, load_lstm_artifacts
+from .models.ml.gru import train_gru
+from .models.econometria.prophet import train_prophet
+from .models.ml.baselines import train_ml_model
 
 
 def _timestamp() -> str:
     return datetime.now().strftime("%Y%m%d_%H%M%S")
 
+
+def _parse_order(text: str, expected: int) -> tuple[int, ...]:
+    parts = [p.strip() for p in text.split(",") if p.strip()]\n+    if len(parts) != expected:\n+        raise ValueError(f\"Expected {expected} values, got {len(parts)} in '{text}'.\")\n+    return tuple(int(p) for p in parts)\n+\n+\n+def _parse_cols(text: str | None) -> list[str]:\n+    if not text:\n+        return []\n+    return [c.strip() for c in text.split(\",\") if c.strip()]\n+\n+\n+def _load_state_frame(args, exog_cols: list[str] | None = None):\n+    df = load_raw_data(args.data_path)\n+    df = add_quarterly_date(df, year_col=args.year_col, quarter_col=args.quarter_col, date_col=args.date_col)\n+    df_state = filter_state(df, state=args.state)\n+    df_state = df_state.set_index(args.date_col).sort_index()\n+    if not args.no_interpolate:\n+        cols = [args.target] + (exog_cols or [])\n+        for col in cols:\n+            if col in df_state.columns:\n+                df_state[col] = df_state[col].interpolate()\n+    return df_state\n+
 
 def _load_series(args):
     df = load_raw_data(args.data_path)
@@ -94,7 +101,7 @@ def cmd_arima(args):
         print(f"Saved metrics to {metrics_path}")
         print(f"Saved predictions to {preds_path}")
         if args.forecast_steps:
-            from .models.arima import fit_arima, forecast_arima
+            from .models.econometria.arima import fit_arima, forecast_arima
 
             model_fit = fit_arima(series, order=order)
             future = forecast_arima(model_fit, steps=args.forecast_steps)

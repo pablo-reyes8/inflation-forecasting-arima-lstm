@@ -6,7 +6,7 @@ from typing import Optional
 import numpy as np
 import pandas as pd
 
-from ..metrics import regression_report
+from ...metrics import regression_report
 
 
 def _require_tensorflow():
