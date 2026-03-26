@@ -75,6 +75,30 @@ inflation-forecast ml-train --model random_forest --lags 4
 inflation-forecast ml-train --model xgboost --lags 4
 ```
 
+## Streamlit Arena
+
+The repository now includes an interactive Streamlit app for side-by-side model comparison on either the built-in panel or your own uploaded series.
+
+```bash
+pip install -e ".[app]"
+streamlit run streamlit_app.py
+```
+
+You can also launch it through the packaged entrypoint:
+
+```bash
+inflation-forecast-arena
+```
+
+The app supports:
+
+- Uploading CSV/XLSX series
+- Date or year-quarter indexing
+- Optional exogenous regressors
+- Shared train / validation / test splits
+- Leaderboards across ARIMA, SARIMA, Prophet, ML baselines, LSTM and GRU when dependencies are available
+- Downloadable comparison tables and prediction traces
+
 ## Data Contract
 
 The canonical dataset is `Data/RawData.csv`.

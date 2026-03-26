@@ -21,10 +21,12 @@ ml = ["scikit-learn", "xgboost"]
 forecasting = ["statsmodels", "prophet", "arch"]
 dl = ["tensorflow", "keras-tuner"]
 viz = ["matplotlib", "seaborn"]
+app = ["streamlit", "plotly", "openpyxl"]
 dev = ["pytest", "pytest-cov"]
 
 [project.scripts]
 inflation-forecast = "inflation_forecasting.cli:main"
+inflation-forecast-arena = "inflation_forecasting.apps.launcher:main"
 
 [tool.setuptools]
 package-dir = { "" = "src" }

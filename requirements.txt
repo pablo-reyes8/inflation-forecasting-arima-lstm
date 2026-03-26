@@ -3,6 +3,9 @@ pandas
 PyYAML
 matplotlib
 seaborn
+streamlit
+plotly
+openpyxl
 scikit-learn
 statsmodels
 tensorflow
