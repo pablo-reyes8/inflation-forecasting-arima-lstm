@@ -1,34 +1,22 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 import numpy as np
 import pandas as pd
 
 from ...metrics import regression_report
-
-
-def _require_tensorflow():
-    try:
-        import tensorflow as tf  # noqa: F401
-    except ImportError as exc:
-        raise ImportError("tensorflow is required for LSTM/GRU models. Install with `pip install tensorflow`.") from exc
-
-
-def _require_keras_tuner():
-    try:
-        import keras_tuner  # noqa: F401
-    except ImportError as exc:
-        raise ImportError("keras-tuner is required for hyperparameter tuning. Install with `pip install keras-tuner`.") from exc
-
-
-def create_supervised(values: np.ndarray, look_back: int) -> tuple[np.ndarray, np.ndarray]:
-    X, y = [], []
-    for i in range(len(values) - look_back):
-        X.append(values[i : i + look_back])
-        y.append(values[i + look_back])
-    return np.array(X), np.array(y)
+from .common import (
+    _require_keras_tuner,
+    _require_tensorflow,
+    build_prediction_frame,
+    create_supervised,
+    history_to_frame,
+    infer_future_index,
+    inverse_transform_1d,
+    prepare_sequence_split,
+    set_random_seed,
+)
 
 
 def build_lstm_model(
@@ -44,7 +32,7 @@ def build_lstm_model(
 
     model = tf.keras.Sequential()
     model.add(tf.keras.layers.Input(shape=(look_back, n_features)))
-    model.add(tf.keras.layers.LSTM(units, activation="relu"))
+    model.add(tf.keras.layers.LSTM(units, activation="tanh"))
     model.add(tf.keras.layers.Dense(dense_units, activation="relu"))
     if dropout > 0:
         model.add(tf.keras.layers.Dropout(dropout))
@@ -61,6 +49,7 @@ class LstmResult:
     metrics: dict
     predictions: pd.DataFrame
     history: object
+    history_frame: pd.DataFrame
 
 
 def train_lstm(
@@ -73,19 +62,16 @@ def train_lstm(
     dense_units: int = 64,
     dropout: float = 0.2,
     learning_rate: float = 1e-3,
+    validation_split: float = 0.1,
+    patience: int = 10,
+    random_seed: int = 42,
     verbose: int = 0,
 ) -> LstmResult:
     _require_tensorflow()
-    from sklearn.preprocessing import MinMaxScaler
+    import tensorflow as tf
 
-    values = series.values.reshape(-1, 1)
-    scaler = MinMaxScaler(feature_range=(0, 1))
-    scaled = scaler.fit_transform(values)
-
-    X, y = create_supervised(scaled, look_back=look_back)
-    split_idx = int(len(X) * (1 - test_size))
-    trainX, testX = X[:split_idx], X[split_idx:]
-    trainY, testY = y[:split_idx], y[split_idx:]
+    split = prepare_sequence_split(series, look_back=look_back, test_size=test_size)
+    set_random_seed(random_seed)
 
     model = build_lstm_model(
         look_back=look_back,
@@ -96,38 +82,63 @@ def train_lstm(
         learning_rate=learning_rate,
     )
 
+    callbacks = []
+    effective_validation_split = validation_split if len(split.trainX) >= 10 else 0.0
+    if effective_validation_split > 0:
+        callbacks.append(
+            tf.keras.callbacks.EarlyStopping(
+                monitor="val_loss",
+                patience=patience,
+                restore_best_weights=True,
+            )
+        )
+
     history = model.fit(
-        trainX,
-        trainY,
+        split.trainX,
+        split.trainY,
         epochs=epochs,
         batch_size=batch_size,
-        validation_data=(testX, testY),
+        validation_split=effective_validation_split,
+        callbacks=callbacks,
+        shuffle=False,
         verbose=verbose,
     )
 
-    train_pred = model.predict(trainX, verbose=0)
-    test_pred = model.predict(testX, verbose=0)
+    train_pred = model.predict(split.trainX, verbose=0)
+    test_pred = model.predict(split.testX, verbose=0)
 
-    train_pred_inv = scaler.inverse_transform(train_pred)
-    test_pred_inv = scaler.inverse_transform(test_pred)
-    trainY_inv = scaler.inverse_transform(trainY)
-    testY_inv = scaler.inverse_transform(testY)
+    train_pred_inv = inverse_transform_1d(split.scaler, train_pred)
+    test_pred_inv = inverse_transform_1d(split.scaler, test_pred)
+    trainY_inv = inverse_transform_1d(split.scaler, split.trainY)
+    testY_inv = inverse_transform_1d(split.scaler, split.testY)
 
-    metrics = regression_report(testY_inv.flatten(), test_pred_inv.flatten())
-
-    train_index = series.index[look_back:look_back + len(train_pred_inv)]
-    test_index = series.index[look_back + len(train_pred_inv) : look_back + len(train_pred_inv) + len(test_pred_inv)]
-
-    preds = pd.DataFrame(
+    metrics = regression_report(testY_inv, test_pred_inv)
+    metrics.update(
         {
-            "y_true": np.concatenate([trainY_inv.flatten(), testY_inv.flatten()]),
-            "y_pred": np.concatenate([train_pred_inv.flatten(), test_pred_inv.flatten()]),
-            "split": ["train"] * len(train_pred_inv) + ["test"] * len(test_pred_inv),
-        },
-        index=train_index.append(test_index),
+            "train_windows": int(len(split.train_index)),
+            "test_windows": int(len(split.test_index)),
+            "look_back": int(look_back),
+        }
     )
 
-    return LstmResult(model=model, scaler=scaler, metrics=metrics, predictions=preds, history=history)
+    predictions = build_prediction_frame(
+        train_true=trainY_inv,
+        train_pred=train_pred_inv,
+        train_index=split.train_index,
+        test_true=testY_inv,
+        test_pred=test_pred_inv,
+        test_index=split.test_index,
+    )
+    history_frame = history_to_frame(history)
+
+    return LstmResult(
+        model=model,
+        scaler=split.scaler,
+        metrics=metrics,
+        predictions=predictions,
+        history=history,
+        history_frame=history_frame,
+    )
 
 
 @dataclass
@@ -145,21 +156,16 @@ def tune_lstm(
     executions_per_trial: int = 2,
     directory: str = "tuning",
     project_name: str = "lstm",
+    epochs: int = 50,
+    random_seed: int = 42,
 ) -> LstmTuningResult:
     _require_tensorflow()
     _require_keras_tuner()
 
     import keras_tuner as kt
-    from sklearn.preprocessing import MinMaxScaler
 
-    values = series.values.reshape(-1, 1)
-    scaler = MinMaxScaler(feature_range=(0, 1))
-    scaled = scaler.fit_transform(values)
-
-    X, y = create_supervised(scaled, look_back=look_back)
-    split_idx = int(len(X) * (1 - test_size))
-    trainX, testX = X[:split_idx], X[split_idx:]
-    trainY, testY = y[:split_idx], y[split_idx:]
+    split = prepare_sequence_split(series, look_back=look_back, test_size=test_size)
+    set_random_seed(random_seed)
 
     def model_builder(hp):
         units = hp.Int("units", min_value=32, max_value=256, step=32)
@@ -184,17 +190,16 @@ def tune_lstm(
         project_name=project_name,
         overwrite=True,
     )
+    tuner.search(split.trainX, split.trainY, validation_split=0.1, epochs=epochs, shuffle=False, verbose=0)
 
-    tuner.search(trainX, trainY, validation_data=(testX, testY), epochs=50, verbose=0)
     best_model = tuner.get_best_models(num_models=1)[0]
     best_hp = tuner.get_best_hyperparameters(num_trials=1)[0].values
-
     return LstmTuningResult(best_model=best_model, best_hyperparameters=best_hp, tuner=tuner)
 
 
 def forecast_future(model: object, scaler: object, series: pd.Series, look_back: int, steps: int) -> pd.Series:
     _require_tensorflow()
-    values = series.values.reshape(-1, 1)
+    values = series.astype(float).to_numpy().reshape(-1, 1)
     scaled = scaler.transform(values)
 
     window = scaled[-look_back:].reshape(1, look_back, 1)
@@ -204,9 +209,8 @@ def forecast_future(model: object, scaler: object, series: pd.Series, look_back:
         preds.append(pred)
         window = np.concatenate([window[:, 1:, :], np.array([[[pred]]])], axis=1)
 
-    preds = np.array(preds).reshape(-1, 1)
-    preds_inv = scaler.inverse_transform(preds).flatten()
-    future_index = pd.date_range(series.index[-1], periods=steps + 1, freq="Q")[1:]
+    preds_inv = inverse_transform_1d(scaler, np.asarray(preds))
+    future_index = infer_future_index(series, steps)
     return pd.Series(preds_inv, index=future_index, name="forecast")
 
 

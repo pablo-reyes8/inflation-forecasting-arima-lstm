@@ -1,0 +1,48 @@
+dataset:
+  name: US state-level inflation panel
+  canonical_path: Data/RawData.csv
+  grain: one row per state-quarter observation
+  primary_key:
+    - state
+    - year
+    - quarter
+  frequency: quarterly
+  coverage:
+    start_year: 1978
+    end_year: 2017
+  default_target: pi
+  notes:
+    - Repository snapshot contains 34 state-level entities including the District of Columbia.
+    - The panel includes headline, tradable and non-tradable inflation measures.
+
+columns:
+  - name: state
+    dtype: string
+    role: entity_id
+    nullable: false
+    description: State or district name used as the panel identifier.
+  - name: year
+    dtype: int64
+    role: time_year
+    nullable: false
+    description: Calendar year of the quarterly observation.
+  - name: quarter
+    dtype: int64
+    role: time_quarter
+    nullable: false
+    description: Quarter index within the year. Valid domain is 1 through 4.
+  - name: pi_nt
+    dtype: float64
+    role: feature
+    nullable: false
+    description: Inflation rate for non-tradable goods.
+  - name: pi_t
+    dtype: float64
+    role: feature
+    nullable: false
+    description: Inflation rate for tradable goods.
+  - name: pi
+    dtype: float64
+    role: target
+    nullable: false
+    description: Headline inflation rate used as the default forecasting target.

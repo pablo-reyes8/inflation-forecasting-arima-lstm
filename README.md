@@ -1,4 +1,4 @@
-# Inflation Forecasting: Econometrics + Machine Learning
+# Inflation Forecasting: Research-Grade ARIMA + Deep Learning Pipeline
 
 ![Repo size](https://img.shields.io/github/repo-size/pablo-reyes8/inflation-forecasting-arima-lstm)
 ![Last commit](https://img.shields.io/github/last-commit/pablo-reyes8/inflation-forecasting-arima-lstm)
@@ -7,158 +7,127 @@
 ![Forks](https://img.shields.io/github/forks/pablo-reyes8/inflation-forecasting-arima-lstm?style=social)
 ![Stars](https://img.shields.io/github/stars/pablo-reyes8/inflation-forecasting-arima-lstm?style=social)
 
-Production-style inflation-forecasting pipeline that combines classical ARIMA diagnostics in Stata with modern ML/DL models in Python. It covers data preparation, exploratory analysis, model selection, residual checks, dynamic multi-step forecasts, and a clean benchmarking suite with MSE, MAE, RMSE and R^2.
+This repository compares classical autoregressive models and modern sequence models for state-level inflation forecasting. It now ships as a reproducible Python package with modular CLIs, dataset contracts, structured run artifacts, and tests intended for serious research workflows rather than a one-off university submission.
 
----
+## What Changed
 
-## Table of Contents
+- `src/` is now split into dedicated packages for `clis`, `data`, `dataops`, `artifacts`, and `models`.
+- The CLI saves each run into a structured `outputs/runs/<timestamp>_<command>/` directory.
+- Every training or audit run writes a machine-readable `manifest.yml`.
+- Dataset quality checks were added through `inflation-forecast data-audit`.
+- LSTM/GRU training was hardened with train-only scaling, deterministic seeds, time-aware validation, and training histories.
+- Data assets and legacy scripts are now documented in [`Data/README.md`](Data/README.md) and [`Scripts/README.md`](Scripts/README.md).
 
-- [Project Overview](#project-overview)
-- [Highlights](#highlights)
-- [Repository Structure](#repository-structure)
-- [Models Included](#models-included)
-- [Quickstart](#quickstart)
-- [CLI Usage](#cli-usage)
-- [Docker](#docker)
-- [Results and Reporting](#results-and-reporting)
-- [Dependencies](#dependencies)
-- [Contributing](#contributing)
-- [License](#license)
-
----
-
-## Project Overview
-
-This repository formalizes a full inflation-forecasting workflow:
-
-1. **Stata econometrics** for diagnostics and classical model selection (ADF, ACF/PACF, ARIMA candidates).
-2. **Python modeling** for LSTM/GRU tuning, baselines, and reproducible evaluation.
-3. **CLI and artifacts** for repeatable training, inference, and metrics export.
-
-The goal is to provide a professional, reproducible project structure that is easy to extend and present.
-
----
-
-## Highlights
-
-- **Dual-stack approach**: Econometric rigor + ML/DL performance.
-- **Multi-model benchmarks**: ARIMA/ARMA/SARIMA/ARIMAX, ARCH/GARCH, LSTM/GRU, Prophet, and ML baselines.
-- **Dynamic forecasts**: Multi-step out-of-sample predictions for policy or investment use cases.
-- **Reproducible outputs**: All metrics and predictions are saved to `outputs/`.
-- **Clean modular code**: Reusable Python package with unit tests.
-
----
-
-## Repository Structure
+## Repository Layout
 
 | Path | Purpose |
 |------|---------|
-| `Scripts/` | Original notebooks and Stata scripts (kept for reference). |
-| `src/inflation_forecasting/` | Python package (data, modeling, evaluation, CLI). |
-| `src/inflation_forecasting/models/econometria/` | Econometric models (ARIMA/ARMA/SARIMA/ARIMAX/ARCH/GARCH). |
-| `src/inflation_forecasting/models/ml/` | ML/DL models (baselines, LSTM, GRU). |
-| `Data/` | Raw and processed datasets (CSV/XLSX). |
-| `tests/` | Pytest unit tests for core utilities. |
-| `outputs/` | Auto-generated metrics and prediction artifacts. |
-| `Dockerfile` | Container for reproducible runs. |
-| `requirements.txt` | Python dependencies. |
-
----
-
-## Models Included
-
-**Econometrics**
-- ARIMA, ARMA, SARIMA, ARIMAX
-- ARCH, GARCH
-- HP filter and seasonal decomposition
-
-**Machine Learning / Deep Learning**
-- LSTM, GRU (with hyperparameter tuning)
-- Random Forest, Gradient Boosting, Linear Regression
-- XGBoost
-- Prophet
-
----
+| `src/inflation_forecasting/clis/` | Modular command-line interface grouped by domain. |
+| `src/inflation_forecasting/data/` | Data loading, preprocessing, features, and time-based splitting. |
+| `src/inflation_forecasting/dataops/` | Dataset contract metadata and quality controls. |
+| `src/inflation_forecasting/artifacts/` | Run directory creation and YAML manifest generation. |
+| `src/inflation_forecasting/models/econometria/` | ARIMA, ARMA, SARIMA, ARIMAX, ARCH/GARCH, Prophet. |
+| `src/inflation_forecasting/models/ml/` | LSTM, GRU, and tabular ML baselines. |
+| `Data/` | Canonical data plus data dictionary and storage notes. |
+| `Scripts/` | Legacy notebooks and Stata scripts kept for traceability. |
+| `tests/` | Unit tests for preprocessing, metrics, artifacts, quality checks and splits. |
+| `outputs/` | Structured run artifacts and forecasts. |
 
 ## Quickstart
 
 ```bash
-python -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
-pip install -e .
+python -m pip install -r requirements.txt
+python -m pip install -r requirements-dev.txt
+python -m pip install -e .
 ```
 
----
-
-## CLI Usage
+## Core Workflows
 
 ```bash
-# Descriptive stats and decomposition
+# Dataset quality gate
+inflation-forecast data-audit --strict
+
+# Descriptive analysis
 inflation-forecast describe --state Maryland
 inflation-forecast hp-filter --state Maryland --lamb 1600
 inflation-forecast decompose --state Maryland --period 4
 
-# ARIMA (fixed order or grid search)
-inflation-forecast arima --order 1,0,3
+# Econometric models
+inflation-forecast arima --order 1,0,3 --forecast-steps 4
 inflation-forecast arima --grid --p-min 0 --p-max 3 --d-min 0 --d-max 1 --q-min 0 --q-max 3
-
-# Econometric extensions
 inflation-forecast arma --order 1,1
 inflation-forecast sarima --order 1,0,1 --auto-seasonal
 inflation-forecast arimax --order 1,0,1 --exog-cols pi_nt,pi_t
 inflation-forecast arch --p 1
 inflation-forecast garch --p 1 --q 1
+inflation-forecast prophet --forecast-steps 4
 
-# LSTM / GRU
+# Deep learning
 inflation-forecast lstm-train --look-back 4 --epochs 80 --forecast-steps 4 --save-model
 inflation-forecast lstm-tune --look-back 4 --max-trials 10
 inflation-forecast gru-train --look-back 4 --epochs 80
+inflation-forecast lstm-forecast --model-path outputs/runs/<run_id>/model.keras --scaler-path outputs/runs/<run_id>/scaler.joblib
 
-# LSTM inference from saved artifacts
-inflation-forecast lstm-forecast --model-path outputs/lstm_model_*.keras --scaler-path outputs/lstm_scaler_*.joblib --steps 4
-
-# Prophet and ML baselines
-inflation-forecast prophet
+# Tabular baselines
 inflation-forecast ml-train --model random_forest --lags 4
 inflation-forecast ml-train --model xgboost --lags 4
 ```
 
----
+## Data Contract
+
+The canonical dataset is `Data/RawData.csv`.
+
+- Shape: `4699 x 6`
+- Grain: one row per `state-year-quarter`
+- Coverage: `1978` to `2017`
+- Entities: `34` state-level series including the District of Columbia
+- Default target: `pi`
+
+Field-level definitions live in [`Data/data_dictionary.yml`](Data/data_dictionary.yml).
+
+## Artifact Contract
+
+Each CLI run writes a self-contained directory under `outputs/runs/`, for example:
+
+```text
+outputs/runs/20260326T190001Z_lstm-train/
+├── history.csv
+├── manifest.yml
+├── metrics.json
+├── model.keras
+├── predictions.csv
+└── scaler.joblib
+```
+
+The manifest records:
+
+- Command and parameterization
+- Dataset slice and target metadata
+- Metrics
+- Relative artifact paths
+- Python/runtime metadata
+
+Artifact conventions are documented in [`outputs/README.md`](outputs/README.md).
+
+## Legacy Scripts
+
+The original Stata script and notebooks are kept in `Scripts/` as historical reference. The recommended production workflow is the Python package + CLI because it is reproducible, testable, and artifact-aware.
+
+## Testing
+
+```bash
+python -m pytest -q
+```
 
 ## Docker
 
 ```bash
 docker build -t inflation-forecast .
-docker run --rm -v "$PWD:/app" inflation-forecast describe --state Maryland
+docker run --rm -v "$PWD:/app" inflation-forecast data-audit
 ```
-
----
-
-## Results and Reporting
-
-All runs export metrics and predictions into `outputs/` as CSV/JSON. This makes it easy to build reports, dashboards or client-ready visualizations.
-
----
-
-## Dependencies
-
-**Optional dependencies by model**
-- ARIMA/HP filter/decomposition: `statsmodels`
-- ARCH/GARCH: `arch`
-- LSTM/GRU + tuning: `tensorflow`, `keras-tuner`
-- Prophet: `prophet`
-- XGBoost: `xgboost`
-
----
-
-## Contributing
-
-Contributions are welcome. Please open an issue or submit a pull request at:
-https://github.com/pablo-reyes8
-
----
 
 ## License
 
-Released under the MIT License - free for personal or commercial use.
+Released under the MIT License.

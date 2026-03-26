@@ -5,6 +5,7 @@ from typing import Optional
 
 import pandas as pd
 
+from ...data.splits import resolve_split_index
 from ...metrics import regression_report
 
 
@@ -47,13 +48,13 @@ def evaluate_arimax(
     test_size: float = 0.2,
 ) -> ArimaxResult:
     series, exog = _align_exog(series, exog)
-    n = len(series)
-    split_idx = int(n * (1 - test_size))
+    split_idx = resolve_split_index(len(series), test_size, minimum_train_size=max(8, sum(order) + 2))
     train_y, test_y = series.iloc[:split_idx], series.iloc[split_idx:]
     train_x, test_x = exog.iloc[:split_idx], exog.iloc[split_idx:]
 
     model_fit = fit_arimax(train_y, train_x, order=order)
     preds = model_fit.forecast(steps=len(test_y), exog=test_x)
     metrics = regression_report(test_y.values, preds.values)
+    metrics.update({"aic": model_fit.aic, "bic": model_fit.bic, "train_rows": int(len(train_y)), "test_rows": int(len(test_y))})
     predictions = pd.Series(preds.values, index=test_y.index, name="prediction")
     return ArimaxResult(order=order, model_fit=model_fit, metrics=metrics, predictions=predictions)

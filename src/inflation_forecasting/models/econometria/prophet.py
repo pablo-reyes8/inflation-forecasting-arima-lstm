@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 import pandas as pd
 
+from ...data.splits import resolve_split_index
 from ...metrics import regression_report
 
 
@@ -28,8 +29,7 @@ def train_prophet(series: pd.Series, test_size: float = 0.2) -> ProphetResult:
     df = series.reset_index()
     df.columns = ["ds", "y"]
 
-    n = len(df)
-    split_idx = int(n * (1 - test_size))
+    split_idx = resolve_split_index(len(df), test_size, minimum_train_size=8)
     train_df = df.iloc[:split_idx]
     test_df = df.iloc[split_idx:]
 
@@ -40,6 +40,7 @@ def train_prophet(series: pd.Series, test_size: float = 0.2) -> ProphetResult:
     preds = forecast["yhat"].values
 
     metrics = regression_report(test_df["y"].values, preds)
+    metrics.update({"train_rows": int(len(train_df)), "test_rows": int(len(test_df))})
 
     pred_df = pd.DataFrame(
         {

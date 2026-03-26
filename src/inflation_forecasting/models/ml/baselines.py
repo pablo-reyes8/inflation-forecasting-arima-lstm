@@ -5,7 +5,8 @@ from typing import Literal
 
 import pandas as pd
 
-from ...features import make_lag_features
+from ...data.features import make_lag_features
+from ...data.splits import resolve_split_index
 from ...metrics import regression_report
 
 
@@ -41,13 +42,11 @@ def train_ml_model(
     random_state: int = 42,
 ) -> MLResult:
     _require_sklearn()
-    from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
+    from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
     from sklearn.linear_model import LinearRegression
 
     X, y = make_lag_features(series, lags=lags)
-    n = len(X)
-    split_idx = int(n * (1 - test_size))
-
+    split_idx = resolve_split_index(len(X), test_size)
     X_train, X_test = X.iloc[:split_idx], X.iloc[split_idx:]
     y_train, y_test = y.iloc[:split_idx], y.iloc[split_idx:]
 
@@ -76,6 +75,7 @@ def train_ml_model(
     preds = model.predict(X_test)
 
     metrics = regression_report(y_test.values, preds)
+    metrics.update({"lags": int(lags), "train_rows": int(len(X_train)), "test_rows": int(len(X_test))})
 
     pred_df = pd.DataFrame(
         {
@@ -85,5 +85,4 @@ def train_ml_model(
         },
         index=y_test.index,
     )
-
     return MLResult(model=model, metrics=metrics, predictions=pred_df)

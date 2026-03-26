@@ -6,6 +6,7 @@ from typing import Iterable, Optional
 
 import pandas as pd
 
+from ...data.splits import resolve_split_index
 from ...metrics import regression_report
 
 
@@ -38,14 +39,14 @@ def forecast_arima(model_fit: object, steps: int) -> pd.Series:
 
 
 def evaluate_arima(series: pd.Series, order: tuple[int, int, int], test_size: float = 0.2) -> ArimaResult:
-    n = len(series)
-    split_idx = int(n * (1 - test_size))
+    split_idx = resolve_split_index(len(series), test_size, minimum_train_size=max(8, sum(order) + 2))
     train = series.iloc[:split_idx]
     test = series.iloc[split_idx:]
 
     model_fit = fit_arima(train, order=order)
     preds = model_fit.forecast(steps=len(test))
     metrics = regression_report(test.values, preds.values)
+    metrics.update({"aic": model_fit.aic, "bic": model_fit.bic, "train_rows": int(len(train)), "test_rows": int(len(test))})
     predictions = pd.Series(preds.values, index=test.index, name="prediction")
     return ArimaResult(order=order, model_fit=model_fit, metrics=metrics, predictions=predictions)
 

@@ -2,11 +2,17 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-import numpy as np
 import pandas as pd
 
 from ...metrics import regression_report
-from .lstm import create_supervised, _require_tensorflow
+from .common import (
+    _require_tensorflow,
+    build_prediction_frame,
+    history_to_frame,
+    inverse_transform_1d,
+    prepare_sequence_split,
+    set_random_seed,
+)
 
 
 def build_gru_model(
@@ -22,7 +28,7 @@ def build_gru_model(
 
     model = tf.keras.Sequential()
     model.add(tf.keras.layers.Input(shape=(look_back, n_features)))
-    model.add(tf.keras.layers.GRU(units, activation="relu"))
+    model.add(tf.keras.layers.GRU(units, activation="tanh"))
     model.add(tf.keras.layers.Dense(dense_units, activation="relu"))
     if dropout > 0:
         model.add(tf.keras.layers.Dropout(dropout))
@@ -39,6 +45,7 @@ class GruResult:
     metrics: dict
     predictions: pd.DataFrame
     history: object
+    history_frame: pd.DataFrame
 
 
 def train_gru(
@@ -51,19 +58,16 @@ def train_gru(
     dense_units: int = 32,
     dropout: float = 0.2,
     learning_rate: float = 1e-3,
+    validation_split: float = 0.1,
+    patience: int = 10,
+    random_seed: int = 42,
     verbose: int = 0,
 ) -> GruResult:
     _require_tensorflow()
-    from sklearn.preprocessing import MinMaxScaler
+    import tensorflow as tf
 
-    values = series.values.reshape(-1, 1)
-    scaler = MinMaxScaler(feature_range=(0, 1))
-    scaled = scaler.fit_transform(values)
-
-    X, y = create_supervised(scaled, look_back=look_back)
-    split_idx = int(len(X) * (1 - test_size))
-    trainX, testX = X[:split_idx], X[split_idx:]
-    trainY, testY = y[:split_idx], y[split_idx:]
+    split = prepare_sequence_split(series, look_back=look_back, test_size=test_size)
+    set_random_seed(random_seed)
 
     model = build_gru_model(
         look_back=look_back,
@@ -74,35 +78,60 @@ def train_gru(
         learning_rate=learning_rate,
     )
 
+    callbacks = []
+    effective_validation_split = validation_split if len(split.trainX) >= 10 else 0.0
+    if effective_validation_split > 0:
+        callbacks.append(
+            tf.keras.callbacks.EarlyStopping(
+                monitor="val_loss",
+                patience=patience,
+                restore_best_weights=True,
+            )
+        )
+
     history = model.fit(
-        trainX,
-        trainY,
+        split.trainX,
+        split.trainY,
         epochs=epochs,
         batch_size=batch_size,
-        validation_data=(testX, testY),
+        validation_split=effective_validation_split,
+        callbacks=callbacks,
+        shuffle=False,
         verbose=verbose,
     )
 
-    train_pred = model.predict(trainX, verbose=0)
-    test_pred = model.predict(testX, verbose=0)
+    train_pred = model.predict(split.trainX, verbose=0)
+    test_pred = model.predict(split.testX, verbose=0)
 
-    train_pred_inv = scaler.inverse_transform(train_pred)
-    test_pred_inv = scaler.inverse_transform(test_pred)
-    trainY_inv = scaler.inverse_transform(trainY)
-    testY_inv = scaler.inverse_transform(testY)
+    train_pred_inv = inverse_transform_1d(split.scaler, train_pred)
+    test_pred_inv = inverse_transform_1d(split.scaler, test_pred)
+    trainY_inv = inverse_transform_1d(split.scaler, split.trainY)
+    testY_inv = inverse_transform_1d(split.scaler, split.testY)
 
-    metrics = regression_report(testY_inv.flatten(), test_pred_inv.flatten())
-
-    train_index = series.index[look_back:look_back + len(train_pred_inv)]
-    test_index = series.index[look_back + len(train_pred_inv) : look_back + len(train_pred_inv) + len(test_pred_inv)]
-
-    preds = pd.DataFrame(
+    metrics = regression_report(testY_inv, test_pred_inv)
+    metrics.update(
         {
-            "y_true": np.concatenate([trainY_inv.flatten(), testY_inv.flatten()]),
-            "y_pred": np.concatenate([train_pred_inv.flatten(), test_pred_inv.flatten()]),
-            "split": ["train"] * len(train_pred_inv) + ["test"] * len(test_pred_inv),
-        },
-        index=train_index.append(test_index),
+            "train_windows": int(len(split.train_index)),
+            "test_windows": int(len(split.test_index)),
+            "look_back": int(look_back),
+        }
     )
 
-    return GruResult(model=model, scaler=scaler, metrics=metrics, predictions=preds, history=history)
+    predictions = build_prediction_frame(
+        train_true=trainY_inv,
+        train_pred=train_pred_inv,
+        train_index=split.train_index,
+        test_true=testY_inv,
+        test_pred=test_pred_inv,
+        test_index=split.test_index,
+    )
+    history_frame = history_to_frame(history)
+
+    return GruResult(
+        model=model,
+        scaler=split.scaler,
+        metrics=metrics,
+        predictions=predictions,
+        history=history,
+        history_frame=history_frame,
+    )
