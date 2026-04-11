@@ -11,27 +11,28 @@ This repository compares classical autoregressive models and modern sequence mod
 
 ## What Changed
 
-- `src/` is now split into dedicated packages for `clis`, `datasets`, `dataops`, `artifacts`, `models`, `apps`, and `api`.
+- `src/` is now split into dedicated packages for `commands`, `datasets`, `dataops`, `artifacts`, `models`, `apps`, and `api`.
 - The CLI saves each run into a structured `outputs/runs/<timestamp>_<command>/` directory.
 - Every training or audit run writes a machine-readable `manifest.yml`.
 - Dataset quality checks were added through `inflation-forecast data-audit`.
 - LSTM/GRU training was hardened with train-only scaling, deterministic seeds, time-aware validation, and training histories.
-- Data assets and legacy scripts are now documented in [`Data/README.md`](Data/README.md) and [`Scripts/README.md`](Scripts/README.md).
+- Data assets and legacy research assets are now documented in [`Data/README.md`](Data/README.md), [`notebooks/README.md`](notebooks/README.md), and [`scripts/README.md`](scripts/README.md).
 - The code namespace now uses `inflation_forecasting.datasets` so it is clearly distinct from the repository-level `Data/` asset folder.
 
 ## Repository Layout
 
 | Path | Purpose |
 |------|---------|
-| `src/inflation_forecasting/clis/` | Modular command-line interface grouped by domain. |
+| `src/inflation_forecasting/commands/` | Modular command-line interface grouped by domain. |
 | `src/inflation_forecasting/datasets/` | Data loading, preprocessing, features, and time-based splitting. |
 | `src/inflation_forecasting/dataops/` | Dataset contract metadata and quality controls. |
 | `src/inflation_forecasting/artifacts/` | Run directory creation and YAML manifest generation. |
-| `src/inflation_forecasting/models/econometria/` | ARIMA, ARMA, SARIMA, ARIMAX, ARCH/GARCH, Prophet. |
+| `src/inflation_forecasting/models/econometrics/` | ARIMA, ARMA, SARIMA, ARIMAX, ARCH/GARCH, Prophet. |
 | `src/inflation_forecasting/models/ml/` | LSTM, GRU, and tabular ML baselines. |
 | `src/inflation_forecasting/api/` | FastAPI service for dataset metadata, forecasts, and volatility endpoints. |
 | `Data/` | Canonical data plus data dictionary and storage notes. |
-| `Scripts/` | Legacy notebooks and Stata scripts kept for traceability. |
+| `notebooks/` | Legacy notebooks and archived research assets. |
+| `scripts/` | Repository-level wrappers for CLI, app, and API. |
 | `tests/` | Unit tests for preprocessing, metrics, artifacts, quality checks and splits. |
 | `outputs/` | Structured run artifacts and forecasts. |
 
@@ -53,6 +54,16 @@ python -m venv .venv
 python -m pip install -r requirements.txt
 python -m pip install -r requirements-dev.txt
 python -m pip install -e .
+```
+
+## Source Checkout Launchers
+
+When you are working directly from the repository instead of an installed package, use the wrappers under `scripts/`:
+
+```bash
+python scripts/forecast.py --help
+python scripts/arena.py
+python scripts/api.py
 ```
 
 ## Core Workflows
@@ -96,6 +107,12 @@ pip install -e ".[app]"
 streamlit run streamlit_app.py
 ```
 
+From a source checkout you can also run:
+
+```bash
+python scripts/arena.py
+```
+
 You can also launch it through the packaged entrypoint:
 
 ```bash
@@ -124,6 +141,12 @@ You can also run it with the module entrypoint:
 
 ```bash
 python -m inflation_forecasting.api
+```
+
+From a source checkout you can also run:
+
+```bash
+python scripts/api.py
 ```
 
 Main routes:
@@ -173,9 +196,9 @@ The manifest records:
 
 Artifact conventions are documented in [`outputs/README.md`](outputs/README.md).
 
-## Legacy Scripts
+## Legacy Assets
 
-The original Stata script and notebooks are kept in `Scripts/` as historical reference. The recommended production workflow is the Python package + CLI because it is reproducible, testable, and artifact-aware.
+The original notebooks and Stata workflow are kept in `notebooks/` as historical reference. The recommended production workflow is the Python package plus the installable CLI/API entrypoints, with `scripts/` reserved for source-checkout wrappers.
 
 ## Testing
 

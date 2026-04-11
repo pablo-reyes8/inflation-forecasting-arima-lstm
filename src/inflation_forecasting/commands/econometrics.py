@@ -4,12 +4,12 @@ import argparse
 
 import pandas as pd
 
-from ..models.econometria.arch_garch import fit_arch, fit_garch
-from ..models.econometria.arima import evaluate_arima, fit_arima, forecast_arima, grid_search_arima
-from ..models.econometria.arimax import evaluate_arimax
-from ..models.econometria.arma import evaluate_arma, grid_search_arma
-from ..models.econometria.prophet import train_prophet
-from ..models.econometria.sarima import evaluate_sarima, infer_seasonal_period
+from ..models.econometrics.arch_garch import fit_arch, fit_garch
+from ..models.econometrics.arima import evaluate_arima, fit_arima, forecast_arima, grid_search_arima
+from ..models.econometrics.arimax import evaluate_arimax
+from ..models.econometrics.arma import evaluate_arma, grid_search_arma
+from ..models.econometrics.prophet import train_prophet
+from ..models.econometrics.sarima import evaluate_sarima, infer_seasonal_period
 from .common import (
     create_run,
     load_series,

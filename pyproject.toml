@@ -27,7 +27,7 @@ api = ["fastapi", "uvicorn"]
 dev = ["pytest", "pytest-cov", "httpx"]
 
 [project.scripts]
-inflation-forecast = "inflation_forecasting.cli:main"
+inflation-forecast = "inflation_forecasting.commands:main"
 inflation-forecast-arena = "inflation_forecasting.apps.launcher:main"
 inflation-forecast-api = "inflation_forecasting.api.launcher:main"
 

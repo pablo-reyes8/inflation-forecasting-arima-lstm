@@ -10,7 +10,7 @@ from inflation_forecasting.apps.arena import (
     prepare_arena_dataset,
 )
 from inflation_forecasting.datasets.io import read_tabular_data
-from inflation_forecasting.models.econometria.sarima import infer_seasonal_period
+from inflation_forecasting.models.econometrics.sarima import infer_seasonal_period
 
 
 def test_read_tabular_data_reads_csv_bytes():

@@ -1,4 +1,4 @@
-"""Modular CLI entrypoints."""
+"""Command registration for the packaged CLI."""
 
 from .app import build_parser, main
 

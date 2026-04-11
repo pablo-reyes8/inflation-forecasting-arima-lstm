@@ -1,16 +1,21 @@
-# Legacy Scripts
+# Repository Scripts
 
-These files are retained as historical reference for the original project workflow.
+This directory contains runnable repository-level wrappers and launchers.
 
-They are not part of the production package. The supported code paths now live under `src/inflation_forecasting/` through the CLI, API, and Streamlit app.
+These files are useful when working directly from the repo checkout. The installable package entrypoints are still defined in `pyproject.toml`.
 
-| File | Type | Status |
-|------|------|--------|
-| `1. DataSet Constuction and Graphs.ipynb` | Notebook | Legacy exploratory analysis. |
-| `2. ARIMA Modeling and Forecasting.do` | Stata script | Legacy econometric workflow. |
-| `3. LTSM model.ipynb` | Notebook | Legacy deep-learning experiment. |
-| `4. Model Selection.ipynb` | Notebook | Legacy comparison notebook. |
+## Files
+
+| File | Purpose |
+|------|---------|
+| `forecast.py` | Launch the packaged CLI from a source checkout. |
+| `arena.py` | Launch the Streamlit arena from a source checkout. |
+| `api.py` | Launch the FastAPI service from a source checkout. |
 
 ## Recommendation
 
-Use the Python package and CLI for reproducible runs, structured outputs, and test coverage. Keep these scripts for auditability, comparison with the original write-up, or manual exploratory work.
+For installed usage, prefer:
+
+- `inflation-forecast`
+- `inflation-forecast-arena`
+- `inflation-forecast-api`

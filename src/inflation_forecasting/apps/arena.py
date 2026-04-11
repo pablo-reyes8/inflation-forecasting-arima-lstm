@@ -12,9 +12,9 @@ from ..datasets.io import read_tabular_data as read_uploaded_tabular_data
 from ..datasets.preprocessing import add_quarterly_date, validate_required_columns
 from ..datasets.splits import train_val_test_split_series
 from ..metrics import regression_report
-from ..models.econometria.arima import fit_arima
-from ..models.econometria.arimax import fit_arimax
-from ..models.econometria.sarima import fit_sarima, infer_seasonal_period
+from ..models.econometrics.arima import fit_arima
+from ..models.econometrics.arimax import fit_arimax
+from ..models.econometrics.sarima import fit_sarima, infer_seasonal_period
 from ..models.ml.common import create_supervised, set_random_seed
 from ..models.ml.gru import build_gru_model
 from ..models.ml.lstm import build_lstm_model

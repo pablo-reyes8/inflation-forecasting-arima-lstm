@@ -9,9 +9,9 @@ from ..apps.arena import available_model_catalog
 from ..dataops.catalog import DATA_ASSETS, RAW_DATA_DICTIONARY, RAW_DATASET_METADATA
 from ..datasets.io import load_raw_data
 from ..datasets.preprocessing import prepare_state_series
-from ..models.econometria.arch_garch import fit_arch, fit_garch
-from ..models.econometria.arima import evaluate_arima, fit_arima, forecast_arima
-from ..models.econometria.sarima import evaluate_sarima, fit_sarima, infer_seasonal_period
+from ..models.econometrics.arch_garch import fit_arch, fit_garch
+from ..models.econometrics.arima import evaluate_arima, fit_arima, forecast_arima
+from ..models.econometrics.sarima import evaluate_sarima, fit_sarima, infer_seasonal_period
 
 
 def _series_payload(series) -> list[dict[str, float | str | None]]:

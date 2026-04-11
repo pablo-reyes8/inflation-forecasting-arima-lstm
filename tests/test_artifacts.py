@@ -2,21 +2,9 @@ from pathlib import Path
 
 import pandas as pd
 
-from inflation_forecasting.cli import build_parser
 from inflation_forecasting.artifacts.manifests import build_run_manifest
 from inflation_forecasting.artifacts.storage import relative_artifact_path
-from inflation_forecasting.data.features import make_lag_features as data_make_lag_features
-from inflation_forecasting.data.io import load_raw_data as data_load_raw_data
-from inflation_forecasting.data.preprocessing import add_quarterly_date as data_add_quarterly_date
-from inflation_forecasting.data.splits import train_test_split_series as data_train_test_split_series
-from inflation_forecasting.datasets.features import make_lag_features as datasets_make_lag_features
-from inflation_forecasting.datasets.io import load_raw_data as datasets_load_raw_data
-from inflation_forecasting.datasets.preprocessing import add_quarterly_date as datasets_add_quarterly_date
-from inflation_forecasting.datasets.splits import train_test_split_series as datasets_train_test_split_series
-from inflation_forecasting.features import make_lag_features as flat_make_lag_features
-from inflation_forecasting.io import load_raw_data as flat_load_raw_data
-from inflation_forecasting.preprocess import add_quarterly_date as flat_add_quarterly_date
-from inflation_forecasting.split import train_test_split_series as flat_train_test_split_series
+from inflation_forecasting.commands import build_parser
 
 
 def test_build_run_manifest_includes_series_metadata():
@@ -47,20 +35,6 @@ def test_relative_artifact_path_prefers_run_relative_paths():
     run_dir = Path("/tmp/runs/run-001")
     artifact = run_dir / "metrics.json"
     assert relative_artifact_path(artifact, run_dir) == "metrics.json"
-
-
-def test_compatibility_layers_point_to_dataset_namespace():
-    assert flat_add_quarterly_date is datasets_add_quarterly_date
-    assert data_add_quarterly_date is datasets_add_quarterly_date
-
-    assert flat_make_lag_features is datasets_make_lag_features
-    assert data_make_lag_features is datasets_make_lag_features
-
-    assert flat_train_test_split_series is datasets_train_test_split_series
-    assert data_train_test_split_series is datasets_train_test_split_series
-
-    assert flat_load_raw_data is datasets_load_raw_data
-    assert data_load_raw_data is datasets_load_raw_data
 
 
 def test_build_parser_registers_core_commands():
