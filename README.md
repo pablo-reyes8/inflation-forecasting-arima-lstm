@@ -7,27 +7,29 @@
 ![Forks](https://img.shields.io/github/forks/pablo-reyes8/inflation-forecasting-arima-lstm?style=social)
 ![Stars](https://img.shields.io/github/stars/pablo-reyes8/inflation-forecasting-arima-lstm?style=social)
 
-This repository compares classical autoregressive models and modern sequence models for state-level inflation forecasting. It now ships as a reproducible Python package with modular CLIs, dataset contracts, structured run artifacts, and tests intended for serious research workflows rather than a one-off university submission.
+This repository compares classical autoregressive models and modern sequence models for state-level inflation forecasting. It now ships as a reproducible Python package with modular CLIs, a small HTTP API, dataset contracts, structured run artifacts, and tests intended for serious research workflows rather than a one-off university submission.
 
 ## What Changed
 
-- `src/` is now split into dedicated packages for `clis`, `data`, `dataops`, `artifacts`, and `models`.
+- `src/` is now split into dedicated packages for `clis`, `datasets`, `dataops`, `artifacts`, `models`, `apps`, and `api`.
 - The CLI saves each run into a structured `outputs/runs/<timestamp>_<command>/` directory.
 - Every training or audit run writes a machine-readable `manifest.yml`.
 - Dataset quality checks were added through `inflation-forecast data-audit`.
 - LSTM/GRU training was hardened with train-only scaling, deterministic seeds, time-aware validation, and training histories.
 - Data assets and legacy scripts are now documented in [`Data/README.md`](Data/README.md) and [`Scripts/README.md`](Scripts/README.md).
+- The code namespace now uses `inflation_forecasting.datasets` so it is clearly distinct from the repository-level `Data/` asset folder.
 
 ## Repository Layout
 
 | Path | Purpose |
 |------|---------|
 | `src/inflation_forecasting/clis/` | Modular command-line interface grouped by domain. |
-| `src/inflation_forecasting/data/` | Data loading, preprocessing, features, and time-based splitting. |
+| `src/inflation_forecasting/datasets/` | Data loading, preprocessing, features, and time-based splitting. |
 | `src/inflation_forecasting/dataops/` | Dataset contract metadata and quality controls. |
 | `src/inflation_forecasting/artifacts/` | Run directory creation and YAML manifest generation. |
 | `src/inflation_forecasting/models/econometria/` | ARIMA, ARMA, SARIMA, ARIMAX, ARCH/GARCH, Prophet. |
 | `src/inflation_forecasting/models/ml/` | LSTM, GRU, and tabular ML baselines. |
+| `src/inflation_forecasting/api/` | FastAPI service for dataset metadata, forecasts, and volatility endpoints. |
 | `Data/` | Canonical data plus data dictionary and storage notes. |
 | `Scripts/` | Legacy notebooks and Stata scripts kept for traceability. |
 | `tests/` | Unit tests for preprocessing, metrics, artifacts, quality checks and splits. |
@@ -38,6 +40,16 @@ This repository compares classical autoregressive models and modern sequence mod
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
+python -m pip install -r requirements.txt
+python -m pip install -r requirements-dev.txt
+python -m pip install -e .
+```
+
+PowerShell:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
 python -m pip install -r requirements-dev.txt
 python -m pip install -e .
@@ -98,6 +110,32 @@ The app supports:
 - Shared train / validation / test splits
 - Leaderboards across ARIMA, SARIMA, Prophet, ML baselines, LSTM and GRU when dependencies are available
 - Downloadable comparison tables and prediction traces
+
+## API
+
+The repository now also exposes a lightweight HTTP API for metadata, classical forecasts, and volatility models.
+
+```bash
+pip install -e ".[api]"
+inflation-forecast-api
+```
+
+You can also run it with the module entrypoint:
+
+```bash
+python -m inflation_forecasting.api
+```
+
+Main routes:
+
+- `GET /health`
+- `GET /catalog/dataset`
+- `GET /catalog/models`
+- `GET /catalog/states`
+- `POST /forecast/arima`
+- `POST /forecast/sarima`
+- `POST /volatility/arch`
+- `POST /volatility/garch`
 
 ## Data Contract
 

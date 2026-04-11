@@ -6,7 +6,7 @@ from typing import Iterable, Optional
 
 import pandas as pd
 
-from ...data.splits import resolve_split_index
+from ...datasets.splits import resolve_split_index
 from ...metrics import regression_report
 from .arima import fit_arima
 

@@ -6,7 +6,7 @@ from typing import Iterable, Optional
 
 import pandas as pd
 
-from ...data.splits import resolve_split_index
+from ...datasets.splits import resolve_split_index
 from ...metrics import regression_report
 
 
@@ -25,10 +25,25 @@ def _require_statsmodels():
         raise ImportError("statsmodels is required for ARIMA. Install with `pip install statsmodels`.") from exc
 
 
+def _coerce_supported_index(series: pd.Series) -> pd.Series:
+    if isinstance(series.index, pd.DatetimeIndex):
+        months = set(series.index.month)
+        if months.issubset({3, 6, 9, 12}):
+            converted = series.copy()
+            converted.index = series.index.to_period("Q")
+            return converted
+        if len(months) >= 6:
+            converted = series.copy()
+            converted.index = series.index.to_period("M")
+            return converted
+    return series
+
+
 def fit_arima(series: pd.Series, order: tuple[int, int, int]) -> object:
     _require_statsmodels()
     from statsmodels.tsa.arima.model import ARIMA
 
+    series = _coerce_supported_index(series)
     model = ARIMA(series, order=order)
     return model.fit()
 

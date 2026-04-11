@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 import pandas as pd
 
-from ...data.splits import resolve_split_index
+from ...datasets.splits import resolve_split_index
 from ...metrics import regression_report
 
 

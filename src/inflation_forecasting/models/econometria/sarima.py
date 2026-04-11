@@ -5,7 +5,7 @@ from typing import Optional
 
 import pandas as pd
 
-from ...data.splits import resolve_split_index
+from ...datasets.splits import resolve_split_index
 from ...metrics import regression_report
 
 
@@ -16,6 +16,20 @@ def _require_statsmodels():
         raise ImportError("statsmodels is required for SARIMA. Install with `pip install statsmodels`.") from exc
 
 
+def _coerce_supported_index(series: pd.Series) -> pd.Series:
+    if isinstance(series.index, pd.DatetimeIndex):
+        months = set(series.index.month)
+        if months.issubset({3, 6, 9, 12}):
+            converted = series.copy()
+            converted.index = series.index.to_period("Q")
+            return converted
+        if len(months) >= 6:
+            converted = series.copy()
+            converted.index = series.index.to_period("M")
+            return converted
+    return series
+
+
 def infer_seasonal_period(series: pd.Series) -> Optional[int]:
     index = series.index
     freq = None
@@ -23,6 +37,13 @@ def infer_seasonal_period(series: pd.Series) -> Optional[int]:
         freq = index.freqstr
     if freq is None:
         freq = pd.infer_freq(index)
+
+    if isinstance(index, pd.DatetimeIndex) and not index.empty and not freq:
+        months = set(index.month)
+        if months.issubset({3, 6, 9, 12}):
+            return 4
+        if len(months) >= 6:
+            return 12
 
     if not freq:
         return None
@@ -36,6 +57,7 @@ def infer_seasonal_period(series: pd.Series) -> Optional[int]:
         return 52
     if freq.startswith("D"):
         return 7
+
     return None
 
 
@@ -56,6 +78,7 @@ def fit_sarima(
     _require_statsmodels()
     from statsmodels.tsa.statespace.sarimax import SARIMAX
 
+    series = _coerce_supported_index(series)
     model = SARIMAX(series, order=order, seasonal_order=seasonal_order, enforce_stationarity=False, enforce_invertibility=False)
     return model.fit(disp=False)
 

@@ -2,6 +2,8 @@
 
 These files are retained as historical reference for the original project workflow.
 
+They are not part of the production package. The supported code paths now live under `src/inflation_forecasting/` through the CLI, API, and Streamlit app.
+
 | File | Type | Status |
 |------|------|--------|
 | `1. DataSet Constuction and Graphs.ipynb` | Notebook | Legacy exploratory analysis. |

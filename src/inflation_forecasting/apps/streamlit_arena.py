@@ -8,7 +8,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
-from ..data.io import load_raw_data
+from ..datasets.io import load_raw_data
 from .arena import (
     MODEL_CATALOG,
     ArenaDataset,

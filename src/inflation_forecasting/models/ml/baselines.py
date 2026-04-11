@@ -5,8 +5,8 @@ from typing import Literal
 
 import pandas as pd
 
-from ...data.features import make_lag_features
-from ...data.splits import resolve_split_index
+from ...datasets.features import make_lag_features
+from ...datasets.splits import resolve_split_index
 from ...metrics import regression_report
 
 

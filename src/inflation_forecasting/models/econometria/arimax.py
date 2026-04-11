@@ -5,7 +5,7 @@ from typing import Optional
 
 import pandas as pd
 
-from ...data.splits import resolve_split_index
+from ...datasets.splits import resolve_split_index
 from ...metrics import regression_report
 
 
@@ -14,6 +14,23 @@ def _require_statsmodels():
         from statsmodels.tsa.statespace.sarimax import SARIMAX  # noqa: F401
     except ImportError as exc:
         raise ImportError("statsmodels is required for ARIMAX. Install with `pip install statsmodels`.") from exc
+
+
+def _coerce_supported_index(series: pd.Series, exog: pd.DataFrame) -> tuple[pd.Series, pd.DataFrame]:
+    if isinstance(series.index, pd.DatetimeIndex):
+        months = set(series.index.month)
+        if months.issubset({3, 6, 9, 12}):
+            period_index = series.index.to_period("Q")
+        elif len(months) >= 6:
+            period_index = series.index.to_period("M")
+        else:
+            return series, exog
+
+        series = series.copy()
+        exog = exog.copy()
+        series.index = period_index
+        exog.index = period_index
+    return series, exog
 
 
 @dataclass
@@ -37,6 +54,7 @@ def fit_arimax(series: pd.Series, exog: pd.DataFrame, order: tuple[int, int, int
     _require_statsmodels()
     from statsmodels.tsa.statespace.sarimax import SARIMAX
 
+    series, exog = _coerce_supported_index(series, exog)
     model = SARIMAX(series, order=order, exog=exog, enforce_stationarity=False, enforce_invertibility=False)
     return model.fit(disp=False)
 

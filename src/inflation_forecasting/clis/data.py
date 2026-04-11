@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import argparse
 
-from ..data.io import load_raw_data
-from ..data.preprocessing import summary_stats
+from ..datasets.io import load_raw_data
+from ..datasets.preprocessing import summary_stats
 from ..dataops.quality import assert_quality_gate, audit_inflation_dataset
 from ..decomposition import hp_filter, seasonal_decompose_series
 from .common import create_run, load_series, save_json_artifact, save_table_artifact, save_yaml_artifact, write_manifest

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "inflation-forecasting"
-version = "0.2.0"
+version = "0.3.0"
 description = "Inflation forecasting toolkit with ARIMA, LSTM/GRU, Prophet, and ML baselines."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -14,19 +14,22 @@ dependencies = [
   "numpy",
   "pandas",
   "PyYAML",
+  "openpyxl",
 ]
 
 [project.optional-dependencies]
 ml = ["scikit-learn", "xgboost"]
 forecasting = ["statsmodels", "prophet", "arch"]
-dl = ["tensorflow", "keras-tuner"]
+dl = ["tensorflow", "keras-tuner", "joblib"]
 viz = ["matplotlib", "seaborn"]
-app = ["streamlit", "plotly", "openpyxl"]
-dev = ["pytest", "pytest-cov"]
+app = ["streamlit", "plotly"]
+api = ["fastapi", "uvicorn"]
+dev = ["pytest", "pytest-cov", "httpx"]
 
 [project.scripts]
 inflation-forecast = "inflation_forecasting.cli:main"
 inflation-forecast-arena = "inflation_forecasting.apps.launcher:main"
+inflation-forecast-api = "inflation_forecasting.api.launcher:main"
 
 [tool.setuptools]
 package-dir = { "" = "src" }

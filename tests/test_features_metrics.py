@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from inflation_forecasting.features import make_lag_features
+from inflation_forecasting.datasets.features import make_lag_features
 from inflation_forecasting.metrics import mae, mape, mse, regression_report, rmse, r2, smape
 
 

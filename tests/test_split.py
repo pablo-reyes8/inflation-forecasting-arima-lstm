@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-from inflation_forecasting.split import train_test_split_series, train_val_test_split_series
+from inflation_forecasting.datasets.splits import train_test_split_series, train_val_test_split_series
 
 
 def test_train_test_split_series():

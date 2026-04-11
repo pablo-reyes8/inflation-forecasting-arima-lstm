@@ -2,15 +2,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from importlib.util import find_spec
-from io import BytesIO
 from time import perf_counter
 from typing import Any, Literal
 
 import pandas as pd
 
-from ..data.features import make_lag_features
-from ..data.preprocessing import add_quarterly_date, validate_required_columns
-from ..data.splits import train_val_test_split_series
+from ..datasets.features import make_lag_features
+from ..datasets.io import read_tabular_data as read_uploaded_tabular_data
+from ..datasets.preprocessing import add_quarterly_date, validate_required_columns
+from ..datasets.splits import train_val_test_split_series
 from ..metrics import regression_report
 from ..models.econometria.arima import fit_arima
 from ..models.econometria.arimax import fit_arimax
@@ -138,13 +138,7 @@ def _unavailable_reason(spec: dict[str, Any], *, has_exog: bool) -> str:
 
 
 def read_tabular_data(file_name: str, payload: bytes) -> pd.DataFrame:
-    suffix = file_name.lower().rsplit(".", 1)[-1]
-    buffer = BytesIO(payload)
-    if suffix == "csv":
-        return pd.read_csv(buffer)
-    if suffix in {"xlsx", "xls"}:
-        return pd.read_excel(buffer)
-    raise ValueError("Unsupported file format. Upload CSV, XLSX or XLS.")
+    return read_uploaded_tabular_data(file_name, payload)
 
 
 def _parse_date_index(

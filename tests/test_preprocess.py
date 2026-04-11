@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-from inflation_forecasting.preprocess import add_quarterly_date, filter_state, prepare_state_series, summary_stats
+from inflation_forecasting.datasets.preprocessing import add_quarterly_date, filter_state, prepare_state_series, summary_stats
 
 
 def test_add_quarterly_date():

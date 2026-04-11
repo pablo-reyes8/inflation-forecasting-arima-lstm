@@ -2,6 +2,8 @@
 
 This directory stores the canonical dataset used by the package plus legacy spreadsheet exports preserved for traceability.
 
+The repository code that loads and preprocesses these assets lives in `src/inflation_forecasting/datasets/`, intentionally named to avoid confusion with this `Data/` folder.
+
 ## Canonical Dataset
 
 - File: `RawData.csv`

@@ -4,7 +4,7 @@ from dataclasses import asdict, dataclass
 
 import pandas as pd
 
-from ..data.preprocessing import RAW_DATA_REQUIRED_COLUMNS, add_quarterly_date, validate_required_columns
+from ..datasets.preprocessing import RAW_DATA_REQUIRED_COLUMNS, add_quarterly_date, validate_required_columns
 
 
 @dataclass

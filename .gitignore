@@ -5,6 +5,7 @@ __pycache__/
 *.pyd
 .DS_Store
 tuning/
+outputs/runs/
 *.log
 .env
 .venv/

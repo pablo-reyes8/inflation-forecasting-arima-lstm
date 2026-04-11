@@ -136,7 +136,10 @@ def cmd_sarima(args: argparse.Namespace) -> None:
         seasonal_period = args.seasonal_period
         if args.auto_seasonal and not seasonal_period:
             seasonal_period = infer_seasonal_period(series)
-        seasonal_order = (args.seasonal_p, args.seasonal_d, args.seasonal_q, seasonal_period or 0)
+        if seasonal_period:
+            seasonal_order = (args.seasonal_p, args.seasonal_d, args.seasonal_q, seasonal_period)
+        else:
+            seasonal_order = (0, 0, 0, 0)
 
     result = evaluate_sarima(series, order=order, seasonal_order=seasonal_order, test_size=args.test_size)
     run = create_run(args, "sarima")
