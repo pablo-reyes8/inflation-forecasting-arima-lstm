@@ -1,4 +1,4 @@
-# Inflation Forecasting: Research-Grade ARIMA + Deep Learning Pipeline
+# Inflation Forecasting: ARIMA, Volatility Models, and Deep Learning
 
 ![Repo size](https://img.shields.io/github/repo-size/pablo-reyes8/inflation-forecasting-arima-lstm)
 ![Last commit](https://img.shields.io/github/last-commit/pablo-reyes8/inflation-forecasting-arima-lstm)
@@ -7,36 +7,129 @@
 ![Forks](https://img.shields.io/github/forks/pablo-reyes8/inflation-forecasting-arima-lstm?style=social)
 ![Stars](https://img.shields.io/github/stars/pablo-reyes8/inflation-forecasting-arima-lstm?style=social)
 
-This repository compares classical autoregressive models and modern sequence models for state-level inflation forecasting. It now ships as a reproducible Python package with modular CLIs, a small HTTP API, dataset contracts, structured run artifacts, and tests intended for serious research workflows rather than a one-off university submission.
+This repository is a research-grade forecasting toolkit for state-level inflation series. It combines classical econometrics, volatility models, machine learning, and deep learning behind a packaged CLI, an interactive Streamlit arena, and a documented HTTP API.
 
-## What Changed
+## Table of Contents
 
-- `src/` is now split into dedicated packages for `commands`, `datasets`, `dataops`, `artifacts`, `models`, `apps`, and `api`.
-- The CLI saves each run into a structured `outputs/runs/<timestamp>_<command>/` directory.
-- Every training or audit run writes a machine-readable `manifest.yml`.
-- Dataset quality checks were added through `inflation-forecast data-audit`.
-- LSTM/GRU training was hardened with train-only scaling, deterministic seeds, time-aware validation, and training histories.
-- Data assets and legacy research assets are now documented in [`Data/README.md`](Data/README.md), [`notebooks/README.md`](notebooks/README.md), and [`scripts/README.md`](scripts/README.md).
-- The code namespace now uses `inflation_forecasting.datasets` so it is clearly distinct from the repository-level `Data/` asset folder.
+- [Overview](#overview)
+- [Model Coverage](#model-coverage)
+- [Visual Results](#visual-results)
+- [Repository Structure](#repository-structure)
+- [Installation](#installation)
+- [Running From a Source Checkout](#running-from-a-source-checkout)
+- [Command Line Interface](#command-line-interface)
+- [Streamlit Arena](#streamlit-arena)
+- [HTTP API](#http-api)
+- [Data Assets](#data-assets)
+- [Artifacts and Outputs](#artifacts-and-outputs)
+- [Testing](#testing)
+- [Docker](#docker)
+- [Legacy Research Assets](#legacy-research-assets)
+- [License](#license)
 
-## Repository Layout
+## Overview
 
-| Path | Purpose |
+The project is organized around three user-facing surfaces:
+
+- A packaged CLI for repeatable runs, diagnostics, training, and artifact generation
+- A Streamlit arena for fair side-by-side model comparison on a shared split
+- A FastAPI service with typed schemas, OpenAPI docs, and dependency-aware responses
+
+In practical terms, the repository lets you:
+
+- audit and profile the canonical inflation panel
+- benchmark multiple forecasting families over the same series
+- compare validation and test behavior instead of trusting a single model run
+- expose forecasts and volatility estimates programmatically through an API
+- preserve every reproducible run in `outputs/runs/`
+
+## Model Coverage
+
+The project compares models from three broad families.
+
+| Family | Models |
 |------|---------|
-| `src/inflation_forecasting/commands/` | Modular command-line interface grouped by domain. |
-| `src/inflation_forecasting/datasets/` | Data loading, preprocessing, features, and time-based splitting. |
-| `src/inflation_forecasting/dataops/` | Dataset contract metadata and quality controls. |
-| `src/inflation_forecasting/artifacts/` | Run directory creation and YAML manifest generation. |
-| `src/inflation_forecasting/models/econometrics/` | ARIMA, ARMA, SARIMA, ARIMAX, ARCH/GARCH, Prophet. |
-| `src/inflation_forecasting/models/ml/` | LSTM, GRU, and tabular ML baselines. |
-| `src/inflation_forecasting/api/` | FastAPI service for dataset metadata, forecasts, and volatility endpoints. |
-| `Data/` | Canonical data plus data dictionary and storage notes. |
-| `notebooks/` | Legacy notebooks and archived research assets. |
-| `scripts/` | Repository-level wrappers for CLI, app, and API. |
-| `tests/` | Unit tests for preprocessing, metrics, artifacts, quality checks and splits. |
-| `outputs/` | Structured run artifacts and forecasts. |
+| Econometrics | `ARIMA`, `ARMA`, `SARIMA`, `ARIMAX`, `Prophet` |
+| Volatility | `ARCH`, `GARCH` |
+| Machine Learning | `Linear Regression`, `Random Forest`, `Gradient Boosting`, `XGBoost` |
+| Deep Learning | `LSTM`, `GRU` |
 
-## Quickstart
+The Streamlit arena currently focuses on direct model comparison across:
+
+- `ARIMA`
+- `ARMA`
+- `SARIMA`
+- `ARIMAX` when exogenous regressors are available
+- `Prophet`
+- `Linear Regression`
+- `Random Forest`
+- `Gradient Boosting`
+- `XGBoost`
+- `LSTM`
+- `GRU`
+
+The key design choice is that these models are compared on the same prepared series and the same train, validation, and test split. That makes leaderboard results much more interpretable than isolated notebook experiments.
+
+## Visual Results
+
+Representative outputs generated by the repository:
+
+<table align="center">
+  <tr>
+    <td align="center" width="50%">
+      <strong>ARIMA benchmark</strong><br />
+      <img src="outputs/Arima%20Predictions.png" alt="ARIMA forecasting example" width="100%" /><br />
+      <sub>In-sample fit and out-of-sample forecast over the Maryland inflation series.</sub>
+    </td>
+    <td align="center" width="50%">
+      <strong>LSTM train and validation view</strong><br />
+      <img src="outputs/LSTM%20predictions%20Full.png" alt="LSTM forecasting example with train and validation predictions" width="100%" /><br />
+      <sub>Observed values together with explicit training and validation predictions in a single plot.</sub>
+    </td>
+  </tr>
+</table>
+
+These figures present representative model fits generated by the project workflows and provide visual evidence of the package’s output quality.
+
+## Repository Structure
+
+```text
+inflation-forecasting-arima-lstm/
+|-- Data/                        Canonical data assets and data dictionary
+|-- notebooks/                   Legacy notebooks and archived research files
+|-- outputs/                     Generated artifacts and run directories
+|-- scripts/                     Repo-local launchers for CLI, app, and API
+|-- src/
+|   `-- inflation_forecasting/
+|       |-- api/                 FastAPI application and schemas
+|       |-- apps/                Interactive app logic for the Streamlit arena
+|       |-- artifacts/           Run directories and manifest generation
+|       |-- commands/            CLI command registration and handlers
+|       |-- datasets/            Data loading, preprocessing, features, splits
+|       |-- dataops/             Dataset catalog and quality checks
+|       |-- models/
+|       |   |-- econometrics/    ARIMA-family, Prophet, ARCH/GARCH
+|       |   `-- ml/              LSTM, GRU, and tabular baselines
+|       |-- decomposition.py     Shared decomposition helpers
+|       |-- metrics.py           Regression metrics
+|       |-- paths.py             Project path helpers
+|       `-- plotting.py          Plotting utilities
+|-- tests/                       Automated test suite
+|-- streamlit_app.py             Root Streamlit entry file
+|-- pyproject.toml               Package metadata and entrypoints
+`-- README.md
+```
+
+Supporting docs:
+
+- `Data/README.md`
+- `notebooks/README.md`
+- `scripts/README.md`
+- `outputs/README.md`
+
+## Installation
+
+Unix-like shells:
 
 ```bash
 python3 -m venv .venv
@@ -56,9 +149,16 @@ python -m pip install -r requirements-dev.txt
 python -m pip install -e .
 ```
 
-## Source Checkout Launchers
+Optional extras:
 
-When you are working directly from the repository instead of an installed package, use the wrappers under `scripts/`:
+- `pip install -e ".[app]"` for the Streamlit interface
+- `pip install -e ".[api]"` for the FastAPI service
+- `pip install -e ".[forecasting]"` for classical forecasting dependencies
+- `pip install -e ".[dl]"` for deep-learning workflows
+
+## Running From a Source Checkout
+
+If you are working directly from the repository and do not want to rely on installed entrypoints, use the wrappers in `scripts/`:
 
 ```bash
 python scripts/forecast.py --help
@@ -66,7 +166,17 @@ python scripts/arena.py
 python scripts/api.py
 ```
 
-## Core Workflows
+## Command Line Interface
+
+Installed entrypoint:
+
+```bash
+inflation-forecast --help
+```
+
+The CLI is the operational backbone of the project. It is the best choice when you want reproducible commands, clean outputs, and machine-readable artifacts.
+
+Typical workflows:
 
 ```bash
 # Dataset quality gate
@@ -100,57 +210,86 @@ inflation-forecast ml-train --model xgboost --lags 4
 
 ## Streamlit Arena
 
-The repository now includes an interactive Streamlit app for side-by-side model comparison on either the built-in panel or your own uploaded series.
+The Streamlit arena is the comparison workspace of the project. Instead of training one model at a time, it lets you benchmark several models against the same prepared dataset and the same split configuration.
+
+Installed usage:
 
 ```bash
 pip install -e ".[app]"
+inflation-forecast-arena
+```
+
+Direct Streamlit usage:
+
+```bash
 streamlit run streamlit_app.py
 ```
 
-From a source checkout you can also run:
+Repo-local wrapper:
 
 ```bash
 python scripts/arena.py
 ```
 
-You can also launch it through the packaged entrypoint:
+The arena offers:
 
-```bash
-inflation-forecast-arena
-```
+- built-in selection from the repository panel by state and target
+- CSV/XLSX upload with either a date column or year/quarter fields
+- optional entity filtering for uploaded panel-style data
+- optional exogenous regressors
+- a shared train, validation, and test split across all selected models
+- leaderboard ranking by a chosen validation metric
+- model-level prediction traces and configuration review
+- downloadable CSV and JSON exports for downstream analysis
 
-The app supports:
+This is the best surface when you want to answer questions like:
 
-- Uploading CSV/XLSX series
-- Date or year-quarter indexing
-- Optional exogenous regressors
-- Shared train / validation / test splits
-- Leaderboards across ARIMA, SARIMA, Prophet, ML baselines, LSTM and GRU when dependencies are available
-- Downloadable comparison tables and prediction traces
+- Which model family is strongest for this series?
+- Does a better validation score also hold on the test window?
+- Do exogenous regressors improve the benchmark?
+- How do classical models compare with LSTM or GRU on the same data slice?
 
-## API
+## HTTP API
 
-The repository now also exposes a lightweight HTTP API for metadata, classical forecasts, and volatility models.
+The API turns the project into a typed service layer rather than a collection of scripts. It is useful for integrations, dashboards, lightweight products, and notebook clients that need stable contracts.
+
+Installed usage:
 
 ```bash
 pip install -e ".[api]"
 inflation-forecast-api
 ```
 
-You can also run it with the module entrypoint:
+Module usage:
 
 ```bash
 python -m inflation_forecasting.api
 ```
 
-From a source checkout you can also run:
+Repo-local wrapper:
 
 ```bash
 python scripts/api.py
 ```
 
+Interactive docs:
+
+- Swagger UI: `/docs`
+- ReDoc: `/redoc`
+- OpenAPI schema: `/openapi.json`
+
+What the API provides:
+
+- typed request and response schemas
+- OpenAPI documentation for all endpoints
+- dependency-aware health reporting
+- dataset and model catalog endpoints
+- forecast endpoints for ARIMA and SARIMA
+- volatility endpoints for ARCH and GARCH
+
 Main routes:
 
+- `GET /`
 - `GET /health`
 - `GET /catalog/dataset`
 - `GET /catalog/models`
@@ -160,7 +299,21 @@ Main routes:
 - `POST /volatility/arch`
 - `POST /volatility/garch`
 
-## Data Contract
+Example request:
+
+```bash
+curl -X POST "http://127.0.0.1:8000/forecast/arima" \
+  -H "Content-Type: application/json" \
+  -d '{
+        "state": "Maryland",
+        "target": "pi",
+        "order": [1, 0, 3],
+        "test_size": 0.2,
+        "forecast_steps": 4
+      }'
+```
+
+## Data Assets
 
 The canonical dataset is `Data/RawData.csv`.
 
@@ -170,35 +323,33 @@ The canonical dataset is `Data/RawData.csv`.
 - Entities: `34` state-level series including the District of Columbia
 - Default target: `pi`
 
-Field-level definitions live in [`Data/data_dictionary.yml`](Data/data_dictionary.yml).
+Field-level definitions live in `Data/data_dictionary.yml`.
 
-## Artifact Contract
+The code namespace that loads and preprocesses these assets lives in `src/inflation_forecasting/datasets/`.
+
+## Artifacts and Outputs
 
 Each CLI run writes a self-contained directory under `outputs/runs/`, for example:
 
 ```text
 outputs/runs/20260326T190001Z_lstm-train/
-├── history.csv
-├── manifest.yml
-├── metrics.json
-├── model.keras
-├── predictions.csv
-└── scaler.joblib
+|-- history.csv
+|-- manifest.yml
+|-- metrics.json
+|-- model.keras
+|-- predictions.csv
+`-- scaler.joblib
 ```
 
 The manifest records:
 
-- Command and parameterization
-- Dataset slice and target metadata
-- Metrics
-- Relative artifact paths
-- Python/runtime metadata
+- command name and parameterization
+- dataset slice and target metadata
+- metrics
+- relative artifact paths
+- runtime metadata
 
-Artifact conventions are documented in [`outputs/README.md`](outputs/README.md).
-
-## Legacy Assets
-
-The original notebooks and Stata workflow are kept in `notebooks/` as historical reference. The recommended production workflow is the Python package plus the installable CLI/API entrypoints, with `scripts/` reserved for source-checkout wrappers.
+More details are documented in `outputs/README.md`.
 
 ## Testing
 
@@ -212,6 +363,12 @@ python -m pytest -q
 docker build -t inflation-forecast .
 docker run --rm -v "$PWD:/app" inflation-forecast data-audit
 ```
+
+## Legacy Research Assets
+
+The original notebooks and Stata workflow are preserved under `notebooks/` for traceability and comparison with the research phase of the project.
+
+Production usage should go through the packaged CLI, the Streamlit arena, or the HTTP API.
 
 ## License
 

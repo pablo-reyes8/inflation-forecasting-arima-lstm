@@ -101,11 +101,30 @@ def test_api_health_and_catalog_endpoints():
 
     health = client.get("/health")
     assert health.status_code == 200
-    assert health.json()["status"] == "ok"
+    assert health.json()["status"] in {"ok", "degraded"}
+    assert "dependencies" in health.json()
 
     catalog = client.get("/catalog/dataset")
     assert catalog.status_code == 200
     assert catalog.json()["dataset"]["path"] == "Data/RawData.csv"
+
+
+def test_api_openapi_includes_typed_forecast_schemas():
+    if find_spec("fastapi") is None or find_spec("httpx") is None:
+        pytest.skip("fastapi/httpx is not installed")
+
+    from fastapi.testclient import TestClient
+
+    from inflation_forecasting.api.app import app
+
+    client = TestClient(app)
+    schema = client.get("/openapi.json")
+    assert schema.status_code == 200
+    payload = schema.json()
+    components = payload["components"]["schemas"]
+    assert "ForecastResponse" in components
+    assert "VolatilityResponse" in components
+    assert payload["paths"]["/forecast/arima"]["post"]["responses"]["200"]["content"]["application/json"]["schema"]["$ref"].endswith("ForecastResponse")
 
 
 def test_api_states_endpoint_returns_repository_states():
@@ -141,6 +160,7 @@ def test_api_arima_endpoint_handles_optional_dependency_gracefully():
         assert response.status_code == 200
         payload = response.json()
         assert payload["model"] == "arima"
+        assert "series_summary" in payload
         assert len(payload["forecast"]) == 2
 
 
